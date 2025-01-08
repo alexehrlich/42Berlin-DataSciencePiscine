@@ -2,19 +2,32 @@ import psycopg2 as pg
 import subprocess 
 import os
 
+def table_exists(cursor, name: str) -> bool:
+    cursor.execute("select exists(select * from information_schema.tables where table_name=%s)", (name,))
+    return cursor.fetchone()[0]
+
 def main():
-    conn = pg.connect(  database = 'piscineds',
-                        host = 'localhost',
-                        user = 'aehrlich',
-                        password = 'mysecretpassword',
-                        port = '5432')
+    try:
+        conn = pg.connect(  database = 'piscineds',
+                            host = 'localhost',
+                            user = 'aehrlich',
+                            password = 'mysecretpassword',
+                            port = '5432')
 
-    cursor = conn.cursor()
-
+        cursor = conn.cursor()
+    except pg.Error as err:
+        print(err)
+        exit(0)
+    
     files = os.listdir('../subject/customer')
     table_names = [file.removesuffix('.csv') for file in files]
 
     for table_name in table_names:
+
+        if table_exists(cursor, table_name):
+            print(f"Table: {table_name} already exists.")
+            continue
+
         try:
             cursor.execute(f"""
                             CREATE TABLE {table_name} (
